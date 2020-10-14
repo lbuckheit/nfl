@@ -8,7 +8,7 @@ options(scipen = 9999)
 
 data <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds'))
 data %>%
-  filter(!is.na(receiver) & week == "2" & posteam == "HOU" & play_type == "pass" & down <= 4) %>%
+  filter(!is.na(receiver) & week == "4" & posteam == "DET" & play_type == "pass" & down <= 4) %>%
   group_by(receiver) %>%
   summarize(total_air_yards = sum(air_yards)) %>%
   ggplot(aes(x = reorder(receiver, -total_air_yards), y = total_air_yards)) +

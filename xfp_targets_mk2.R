@@ -4,11 +4,12 @@ library(ggimage)
 library(nflfastR)
 library(dplyr)
 library(ggplot2)
+library(ggrepel)
 options(scipen = 9999)
 
-# -------------
+# --------------------------
 # Sourced almost entirely from: https://www.opensourcefootball.com/posts/2020-08-30-calculating-expected-fantasy-points-for-receivers/
-# -------------
+# --------------------------
 
 source('https://raw.githubusercontent.com/mrcaseb/nflfastR/a26830822df59b6f8d82e65c9723a141957d1da3/R/helper_add_xyac.R')
 source('https://github.com/mrcaseb/nflfastR/raw/master/R/helper_add_nflscrapr_mutations.R')
@@ -31,6 +32,9 @@ body(add_xyac_dist) <- add_xyac_blocks %>% as.call
 
 # 2020 pbp data
 pbp_df <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds'))
+# Grab smaller chunks of the season if you want
+pbp_df %>%
+  filter(week >= 2 & week <= 17)
 
 avg_exp_fp_df <- pbp_df %>%
   # Get passing plays
@@ -95,6 +99,10 @@ avg_exp_fp_df <- pbp_df %>%
   ungroup
 
 short_xfp_targets <- avg_exp_fp_df %>%
-  select(receiver, games, hPPR_pts, exp_hPPR_pts, hPPR_over_exp)
+  select(receiver, games, hPPR_pts, exp_hPPR_pts, hPPR_over_exp) %>%
+  filter(hPPR_pts >= 30)
 
-View(short_xfp_targets)
+ggplot(short_xfp_targets, aes(x=exp_hPPR_pts, y=hPPR_pts, label=receiver)) +
+  geom_point() +
+  geom_text_repel() +
+  geom_smooth(method = "lm", se = FALSE)

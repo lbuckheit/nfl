@@ -4,6 +4,7 @@ library(ggimage)
 library(nflfastR)
 library(dplyr)
 library(ggplot2)
+library(ggrepel)
 options(scipen = 9999)
 
 # define which seasons shall be loaded
@@ -23,15 +24,16 @@ xfp_carry <- historical_pbp %>%
   summarize(yardline_100, xfp_pp)
 
 # 2020 pbp data
+# TODO - BUILD A WAY TO SELECT WHICH WEEKS TO USE
 pbp_df_2020 <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds'))
 
 xfp_rushes_2020 <- pbp_df_2020 %>%
   filter(play_type == "run" & !is.na(rusher) & qb_scramble == 0) %>%
-  select(rusher, desc, yardline_100) %>%
+  select(rusher, desc, yardline_100, yards_gained, touchdown) %>%
   # Assign an xfp to each carry based on where the carry took place (using the earlier calculated data)
   mutate(xfp = xfp_carry[c(yardline_100), 2]) %>%
   group_by(rusher) %>%
-  summarize(carries = n(), total_rush_xfp = sum(xfp), rush_xfp_pp = total_rush_xfp / carries) %>%
+  summarize(carries = n(), total_rush_xfp = sum(xfp), rush_xfp_pp = total_rush_xfp / carries, actual_rush_fp = 0.1 * sum(yards_gained) + 6 * sum(touchdown)) %>%
   filter(carries >= 10)
 
 # -------------
@@ -121,20 +123,25 @@ avg_exp_fp_df <- pbp_df_2020 %>%
   ungroup
 
 short_xfp_targets_2020 <- avg_exp_fp_df %>%
-  select(receiver, games, exp_hPPR_pts) %>%
-  summarize(player = receiver, games, exp_hPPR_pts)
+  select(receiver, games, exp_hPPR_pts, hPPR_pts) %>%
+  summarize(player = receiver, games, exp_hPPR_pts, actual_catch_fp = hPPR_pts)
 
 short_xfp_rushes_2020 <- xfp_rushes_2020 %>%
-  summarize(player = rusher, total_rush_xfp)
+  summarize(player = rusher, total_rush_xfp, actual_rush_fp)
 
 # TODO - Games column is a little fucked up because it only registers games in which the player had a target
 xfp_rb <- merge(short_xfp_rushes_2020, short_xfp_targets_2020, by="player") %>%
   mutate(
     total_xfp = total_rush_xfp + exp_hPPR_pts,
+    actual_fp = actual_rush_fp + actual_catch_fp,
     total_xfp_pg = total_xfp / games
     ) %>%
   filter(games > 1) # TODO - TEMP FIX FOR THE GAMES PLAYED ISSUES
 
-# TODO - COULD BACKTEST THIS ON LAST YEAR'S DATA TO FIND A CORRELATION
-View(xfp_rb)
+short_xfp_rb <- xfp_rb %>%
+  select(player, total_rush_xfp, actual_rush_fp, exp_hPPR_pts, actual_catch_fp, total_xfp, actual_fp)
   
+ggplot(short_xfp_rb, aes(x=total_xfp, y=actual_fp, label=player)) +
+  geom_point() +
+  geom_text_repel() +
+  geom_smooth(method = "lm", se = FALSE)

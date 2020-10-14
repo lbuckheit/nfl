@@ -7,10 +7,13 @@ library(ggplot2)
 options(scipen = 9999)
 
 data <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds'))
-q <- data %>%
-  filter(!is.na(receiver) & posteam == "PIT" & play_type == "pass" & down <= 4) %>%
+targs <- data %>%
+  filter(!is.na(receiver) & week == 5 & play_type == "pass" & down <= 4) %>%
   group_by(receiver) %>%
-  summarize(targets = n(), adot = sum(air_yards) / n(), air_yards = sum(air_yards))
+  summarize(targets = n(), 
+            adot = sum(air_yards) / n(), 
+            air_yards = sum(air_yards),
+            yards = sum(yards_gained))
   # ggplot(aes(x = reorder(receiver, -adot), y = adot)) +
   # geom_bar(stat="identity") +
   # theme(axis.text.x = element_text(angle = -90)) +
@@ -21,6 +24,6 @@ q <- data %>%
   #      caption = "Data from nflscrapR"
   # )
 
-View(q)
+View(targs)
 
 
