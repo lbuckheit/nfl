@@ -6,6 +6,7 @@ library(dplyr)
 library(ggplot2)
 library(ggrepel)
 options(scipen = 9999)
+# TODO - per game rather than total, now that the bye weeks have started
 
 # define which seasons shall be loaded
 seasons <- 2010:2019
@@ -24,7 +25,6 @@ xfp_carry <- historical_pbp %>%
   summarize(yardline_100, xfp_pp)
 
 # 2020 pbp data
-# TODO - BUILD A WAY TO SELECT WHICH WEEKS TO USE
 pbp_df_2020 <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds'))
 
 xfp_rushes_2020 <- pbp_df_2020 %>%
@@ -34,7 +34,7 @@ xfp_rushes_2020 <- pbp_df_2020 %>%
   mutate(xfp = xfp_carry[c(yardline_100), 2]) %>%
   group_by(rusher) %>%
   summarize(carries = n(), total_rush_xfp = sum(xfp), rush_xfp_pp = total_rush_xfp / carries, actual_rush_fp = 0.1 * sum(yards_gained) + 6 * sum(touchdown)) %>%
-  filter(carries >= 10)
+  filter(carries >= 20)
 
 # -------------
 # Sourced almost entirely from: https://www.opensourcefootball.com/posts/2020-08-30-calculating-expected-fantasy-points-for-receivers/
@@ -90,7 +90,7 @@ avg_exp_fp_df <- pbp_df_2020 %>%
   group_by(game_id, receiver) %>%
   mutate(game_played = ifelse(row_number()==1,1,0)) %>%
   ungroup %>%
-  # TODO - NOT ACTUALLY SURE WHAT'S GOING ON HERE.  THINK IT HAS SOMETHING TO DO WITH ONLY RECORDING A SINGLE TARGET FOR THE MANY ROWS OF POTENTIAL YAC OUTCOMES
+  # TODO - NOT ACTUALLY SURE WHAT'S GOING ON HERE.  IT HAS SOMETHING TO DO WITH ONLY RECORDING A SINGLE TARGET FOR THE MANY ROWS OF POTENTIAL YAC OUTCOMES
   group_by(game_id, play_id, receiver) %>%
   mutate(target = ifelse(row_number()==1,1,0)) %>%
   ungroup %>%
@@ -130,6 +130,7 @@ short_xfp_rushes_2020 <- xfp_rushes_2020 %>%
   summarize(player = rusher, total_rush_xfp, actual_rush_fp)
 
 # TODO - Games column is a little fucked up because it only registers games in which the player had a target
+# TODO - Malcolm and Marquise Brown are being combined (can fix by grouping by posteam as well as player)
 xfp_rb <- merge(short_xfp_rushes_2020, short_xfp_targets_2020, by="player") %>%
   mutate(
     total_xfp = total_rush_xfp + exp_hPPR_pts,

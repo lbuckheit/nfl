@@ -6,6 +6,7 @@ library(dplyr)
 library(ggplot2)
 library(ggrepel)
 options(scipen = 9999)
+# TODO - Per game rather than total XFP now that its bye week season
 
 # --------------------------
 # Sourced almost entirely from: https://www.opensourcefootball.com/posts/2020-08-30-calculating-expected-fantasy-points-for-receivers/
@@ -34,7 +35,7 @@ body(add_xyac_dist) <- add_xyac_blocks %>% as.call
 pbp_df <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds'))
 # Grab smaller chunks of the season if you want
 pbp_df %>%
-  filter(week >= 2 & week <= 17)
+  filter(week >= 1 & week <= 17)
 
 avg_exp_fp_df <- pbp_df %>%
   # Get passing plays
@@ -63,6 +64,7 @@ avg_exp_fp_df <- pbp_df %>%
     game_played = 0
   )  %>%
   # Indicating a single receiver game for use in the games played summary later
+  # TODO - One issue here is that if a receiver played but didn't receive a target, it won't count, when really it should count as a terrible game
   group_by(game_id, receiver) %>%
   mutate(game_played = ifelse(row_number()==1,1,0)) %>%
   ungroup %>%
@@ -73,7 +75,7 @@ avg_exp_fp_df <- pbp_df %>%
   group_by(posteam, receiver) %>%
   # Summary columns
   summarize(
-    # Games played by a receiver (na.rm removed N/A entries)
+    # Games played by a receiver (na.rm removes N/A entries)
     games = sum(game_played, na.rm = T),
     # Targets by a receiver
     targets = sum(target, na.rm = T),
