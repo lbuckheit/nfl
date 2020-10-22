@@ -6,6 +6,7 @@ library(dplyr)
 library(ggplot2)
 options(scipen = 9999)
 # TODO - Be able to break down by week chunks
+# TODO - Is this scaling against average the best way to do it?
 
 data <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds'))
 
