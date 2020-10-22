@@ -6,7 +6,7 @@ library(dplyr)
 library(ggplot2)
 options(scipen = 9999)
 # TODO - Be able to break down by week chunks
-# TODO - Maybe add another adjustment to scale it by epa/pass play to try and capture volume and efficiency?
+# TODO - Maybe add another adjustment to scale it by epa/pass to try and capture volume AND efficiency?
 
 data <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds'))
 
@@ -33,9 +33,9 @@ awopr <- merge %>%
          awopr = wopr * dbpg_scale) %>%
   summarize(full_name,
             team,
-            dropbacks_pg,
-            dbpg_scale,
+            dropbacks_pg = round(dropbacks_pg, digits = 2),
+            dbpg_scale = round(dbpg_scale, digits = 2),
             wopr,
-            awopr)
+            awopr = round(awopr, digits = 2))
 
 write.csv(awopr, "./awopr.csv")
