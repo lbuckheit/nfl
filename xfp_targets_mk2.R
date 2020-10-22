@@ -7,6 +7,7 @@ library(ggplot2)
 library(ggrepel)
 options(scipen = 9999)
 # TODO - Per game rather than total XFP now that its bye week season
+# TODO - Backtest this for year-over-year stability a la WOPR
 
 # --------------------------
 # Sourced almost entirely from: https://www.opensourcefootball.com/posts/2020-08-30-calculating-expected-fantasy-points-for-receivers/
