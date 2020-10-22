@@ -5,7 +5,7 @@ library(nflfastR)
 library(dplyr)
 library(ggplot2)
 options(scipen = 9999)
-# TODO - Be able to break down by week chunks
+# TODO - Be able to break down by week chunks (this probably involves just downloading a specific csv, since season-long anya and dbpg is likely better to use for the scaling)
 # TODO - Is this scaling against average the best way to do it?
 
 data <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds'))
