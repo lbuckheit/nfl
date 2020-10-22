@@ -25,6 +25,7 @@ names(passes)[names(passes) == "posteam"] <- "team"
 
 airyards <- read.csv("./airyards_thru_6.csv")
 
+# Since the airyards API is dead just gotta grab the CSV until I get my own WOPR generator up
 merge <- merge(passes, airyards, by="team")
 
 awopr <- merge %>%
@@ -36,3 +37,5 @@ awopr <- merge %>%
             dbpg_scale,
             wopr,
             awopr)
+
+write.csv(awopr, "./awopr.csv")
