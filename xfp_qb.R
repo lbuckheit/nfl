@@ -32,9 +32,10 @@ add_xyac_blocks[[5]] <- add_xyac_blocks[[5]] %>%
 body(add_xyac_dist) <- add_xyac_blocks %>% as.call
 
 # 2020 pbp data
-pbp_df <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds')) %>%
-  # Grab smaller chunks of the season if you want
-  filter(week >= 3 & week <= 17)
+pbp_df <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds'))
+# Grab smaller chunks of the season if you want
+pbp_df %>%
+  filter(week >= 1 & week <= 17)
 
 avg_exp_fp_df <- pbp_df %>%
   # Get passing plays
@@ -42,14 +43,14 @@ avg_exp_fp_df <- pbp_df %>%
   # Add our custom xyac columns
   add_xyac_dist %>%
   # Select relevant columns
-  select(season = season.x, game_id, play_id, posteam = posteam.x, receiver, yardline_100 = yardline_100.x, air_yards = air_yards.x, actual_yards_gained = yards_gained, complete_pass, cp, yac_prob = prob, gain) %>%
+  select(season = season.x, game_id, play_id, posteam = posteam.x, passer, yardline_100 = yardline_100.x, air_yards = air_yards.x, actual_yards_gained = yards_gained, complete_pass, cp, yac_prob = prob, gain) %>%
   mutate(
     # Check whether the target is in the end zone (yardline_100==air_yards implies an end zone target)
     # The YAC function creates a copy of each play with a different gain number and then assigns a probability to the potential of that YAC happening
     gain = ifelse(yardline_100==air_yards, yardline_100, gain),
     yac_prob = ifelse(yardline_100==air_yards, 1, yac_prob),
     # Calculate 0.5 PPR fantasy points that a completion would be worth with a given YAC (air_yards + YAC = gain)
-    hPPR_points = 0.5 + gain/10 + ifelse(gain == yardline_100, 6, 0),
+    hPPR_points = gain/25 + ifelse(gain == yardline_100, 4, 0),
     # Can only run after the catch if you catch the ball first (cp = completion probability, a built-in nflfastR model)
     catch_run_prob = cp * yac_prob,
     # Calculate the chance of the run after the catch happening
@@ -59,27 +60,27 @@ avg_exp_fp_df <- pbp_df %>%
     actual_outcome = ifelse(actual_yards_gained==gain & complete_pass==1, 1, 0),
     actual_hPPR_points = ifelse(actual_outcome==1, hPPR_points, 0),
     # Columns for use a few lines down
-    target = 0,
+    attempt = 0,
     game_played = 0
   )  %>%
   # Indicating a single receiver game for use in the games played summary later
   # TODO - One issue here is that if a receiver played but didn't receive a target, it won't count, when really it should count as a terrible game
-  group_by(game_id, receiver) %>%
+  group_by(game_id, passer) %>%
   mutate(game_played = ifelse(row_number()==1,1,0)) %>%
   ungroup %>%
   # TODO - NOT ACTUALLY SURE WHAT'S GOING ON HERE.  THINK IT HAS SOMETHING TO DO WITH ONLY RECORDING A SINGLE TARGET FOR THE MANY ROWS OF POTENTIAL YAC OUTCOMES
-  group_by(game_id, play_id, receiver) %>%
-  mutate(target = ifelse(row_number()==1,1,0)) %>%
+  group_by(game_id, play_id, passer) %>%
+  mutate(attempt = ifelse(row_number()==1,1,0)) %>%
   ungroup %>%
-  group_by(posteam, receiver) %>%
+  group_by(posteam, passer) %>%
   # Summary columns
   summarize(
     # Games played by a receiver (na.rm removes N/A entries)
     games = sum(game_played, na.rm = T),
     # Targets by a receiver
-    targets = sum(target, na.rm = T),
+    attempts = sum(attempt, na.rm = T),
     # Catches by a receiver
-    catches = sum(actual_outcome, na.rm = T),
+    completions = sum(actual_outcome, na.rm = T),
     # Total yards by a receiver
     yards = sum(ifelse(actual_outcome==1, gain, 0), na.rm = T),
     # Total touchdowns by a receiver (if the actual gain is = to the yardline it must be a touchdown)
@@ -87,7 +88,7 @@ avg_exp_fp_df <- pbp_df %>%
     # Total 0.5 PPR points by a receiver
     hPPR_pts = sum(actual_hPPR_points, na.rm = T),
     # Expected catches by a receiver = sum of (target * completion probability of the target)
-    exp_catches = sum(ifelse(target==1, cp, NA), na.rm = T),
+    exp_completions = sum(ifelse(attempt==1, cp, NA), na.rm = T),
     # Expected yards for a receiver
     exp_yards = sum(exp_yards, na.rm = T),
     # Expected touchdowns for a receiver
@@ -99,11 +100,14 @@ avg_exp_fp_df <- pbp_df %>%
   ) %>%
   ungroup
 
-short_xfp_targets <- avg_exp_fp_df %>%
-  select(receiver, games, hPPR_pts, exp_hPPR_pts, hPPR_over_exp) %>%
-  filter(hPPR_pts >= 30)
+short_xfp_passes <- avg_exp_fp_df %>%
+  select(passer, games, hPPR_pts, exp_hPPR_pts, hPPR_over_exp) %>%
+  mutate(hPPR_pts_pg = hPPR_pts / games,
+         exp_hPPR_pts_pg = exp_hPPR_pts / games) %>%
+  filter(exp_hPPR_pts_pg >= 15,
+         hPPR_pts_pg >= 15)
 
-ggplot(short_xfp_targets, aes(x=exp_hPPR_pts, y=hPPR_pts, label=receiver)) +
+ggplot(short_xfp_passes, aes(x=exp_hPPR_pts_pg, y=hPPR_pts_pg, label=passer)) +
   geom_point() +
   geom_text_repel() +
   geom_smooth(method = "lm", se = FALSE)
