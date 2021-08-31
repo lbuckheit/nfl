@@ -40,4 +40,4 @@ players <- subset( players, select = c(team, position, first_name, last_name, gs
 
 merged <- merge(espn_adp, players)
 
-View(merged)
+write.csv(merged, "./2021_draft/clean_adp_data.csv")

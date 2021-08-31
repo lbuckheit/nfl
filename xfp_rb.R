@@ -28,12 +28,12 @@ xfp_carry <- historical_pbp %>%
 pbp_df_2020 <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds'))
 
 xfp_rushes_2020 <- pbp_df_2020 %>%
-  filter(play_type == "run" & !is.na(rusher) & qb_scramble == 0) %>%
-  select(rusher, desc, yardline_100, yards_gained, touchdown) %>%
+  filter(play_type == "run" & !is.na(rusher) & qb_scramble == 0 & season_type == "REG") %>%
+  select(rusher, desc, yardline_100, yards_gained, touchdown, rusher_id, game_id) %>%
   # Assign an xfp to each carry based on where the carry took place (using the earlier calculated data)
   mutate(xfp = xfp_carry[c(yardline_100), 2]) %>%
-  group_by(rusher) %>%
-  summarize(carries = n(), total_rush_xfp = sum(xfp), rush_xfp_pp = total_rush_xfp / carries, actual_rush_fp = 0.1 * sum(yards_gained) + 6 * sum(touchdown)) %>%
+  group_by(rusher, rusher_id) %>%
+  summarize(carries = n(), total_rush_xfp = sum(xfp), games = length(unique(game_id)), rush_xfp_pp = total_rush_xfp / carries, actual_rush_fp = 0.1 * sum(yards_gained) + 6 * sum(touchdown)) %>%
   filter(carries >= 20)
 
 # -------------
@@ -65,7 +65,7 @@ avg_exp_fp_df <- pbp_df_2020 %>%
   # Add our custom xyac columns
   add_xyac_dist %>%
   # Select relevant columns
-  select(season = season.x, game_id, play_id, posteam = posteam.x, receiver, yardline_100 = yardline_100.x, air_yards = air_yards.x, actual_yards_gained = yards_gained, complete_pass, cp, yac_prob = prob, gain) %>%
+  select(season = season.x, game_id, play_id, posteam = posteam.x, receiver, receiver_id, yardline_100 = yardline_100.x, air_yards = air_yards.x, actual_yards_gained = yards_gained, complete_pass, cp, yac_prob = prob, gain) %>%
   mutate(
     # Check whether the target is in the end zone (yardline_100==air_yards implies an end zone target)
     # The YAC function creates a copy of each play with a different gain number and then assigns a probability to the potential of that YAC happening
@@ -94,7 +94,7 @@ avg_exp_fp_df <- pbp_df_2020 %>%
   group_by(game_id, play_id, receiver) %>%
   mutate(target = ifelse(row_number()==1,1,0)) %>%
   ungroup %>%
-  group_by(posteam, receiver) %>%
+  group_by(posteam, receiver, receiver_id) %>%
   # Summary columns
   summarize(
     # Games played by a receiver (na.rm removed N/A entries)
@@ -123,26 +123,30 @@ avg_exp_fp_df <- pbp_df_2020 %>%
   ungroup
 
 short_xfp_targets_2020 <- avg_exp_fp_df %>%
-  select(receiver, games, exp_hPPR_pts, hPPR_pts) %>%
-  summarize(player = receiver, games, exp_hPPR_pts, actual_catch_fp = hPPR_pts)
+  select(receiver, receiver_id, games, exp_hPPR_pts, hPPR_pts) %>%
+  summarize(player = receiver, gsis_id = receiver_id, rec_games = games, exp_hPPR_pts, actual_catch_fp = hPPR_pts)
 
 short_xfp_rushes_2020 <- xfp_rushes_2020 %>%
-  summarize(player = rusher, total_rush_xfp, actual_rush_fp)
+  summarize(player = rusher, rush_games = games, total_rush_xfp, actual_rush_fp, gsis_id = rusher_id) %>%
+  subset(select = -c(rusher)) # TODO - SHOULDN'T HAVE TO DO THIS
 
 # TODO - Games column is a little fucked up because it only registers games in which the player had a target
-# TODO - Malcolm and Marquise Brown are being combined (can fix by grouping by posteam as well as player)
-xfp_rb <- merge(short_xfp_rushes_2020, short_xfp_targets_2020, by="player") %>%
-  mutate(
+# TODO - Malcolm and Marquise Brown are being combined (can fix by grouping by posteam or ID as well as player)
+xfp_rb <- merge(short_xfp_rushes_2020, short_xfp_targets_2020)
+xfp_rb$games <- pmax(xfp_rb$rush_games, xfp_rb$rec_games)
+xfp_rb <- mutate(xfp_rb,
     total_xfp = total_rush_xfp + exp_hPPR_pts,
     actual_fp = actual_rush_fp + actual_catch_fp,
     total_xfp_pg = total_xfp / games
     ) %>%
-  filter(games > 1) # TODO - TEMP FIX FOR THE GAMES PLAYED ISSUES
+  filter(games >= 3) # TODO - TEMP FIX FOR THE GAMES PLAYED ISSUES
 
 short_xfp_rb <- xfp_rb %>%
-  select(player, total_rush_xfp, actual_rush_fp, exp_hPPR_pts, actual_catch_fp, total_xfp, actual_fp)
+  select(player, gsis_id, games, total_rush_xfp, actual_rush_fp, exp_hPPR_pts, actual_catch_fp, total_xfp, actual_fp, total_xfp_pg)
   
 ggplot(short_xfp_rb, aes(x=total_xfp, y=actual_fp, label=player)) +
   geom_point() +
   geom_text_repel() +
   geom_smooth(method = "lm", se = FALSE)
+
+write.csv(short_xfp_rb, "./2021_draft/2020_xfp_rb.csv")
