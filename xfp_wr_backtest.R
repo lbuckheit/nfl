@@ -85,7 +85,7 @@ avg_exp_fp_df <- pbp_df_2019 %>%
     exp_yards = sum(exp_yards, na.rm = T),
     # Expected touchdowns for a receiver
     exp_td = sum(ifelse(gain==yardline_100, catch_run_prob, 0), na.rm = T),
-    # Expected 0.t PPR points for a receiver
+    # Expected 0.5 PPR points for a receiver
     exp_hPPR_pts = sum(exp_hPPR_points, na.rm = T),
     # Difference between actual and expected 0.5 PPR points
     hPPR_over_exp = hPPR_pts - exp_hPPR_pts

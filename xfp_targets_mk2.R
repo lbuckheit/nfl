@@ -102,7 +102,7 @@ avg_exp_fp_df <- pbp_df %>%
 
 short_xfp_targets <- avg_exp_fp_df %>%
   select(receiver, games, hPPR_pts, exp_hPPR_pts, hPPR_over_exp) %>%
-  filter(hPPR_pts >= 30)
+  filter(hPPR_pts >= 10)
 
 ggplot(short_xfp_targets, aes(x=exp_hPPR_pts, y=hPPR_pts, label=receiver)) +
   geom_point() +
