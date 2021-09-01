@@ -6,9 +6,8 @@ library(dplyr)
 library(ggplot2)
 library(ggrepel)
 options(scipen = 9999)
-# TODO - per game rather than total, now that the bye weeks have started
 
-# define which seasons shall be loaded
+# Build the historical xfp df
 seasons <- 2010:2019
 historical_pbp <- purrr::map_df(seasons, function(x) {
   readRDS(
