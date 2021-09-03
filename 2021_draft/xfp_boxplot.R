@@ -212,7 +212,9 @@ relevant_receivers <- concise_xfp_targets %>%
 
 receivers_to_plot = merge(concise_xfp_targets, relevant_receivers)
 
-ggplot(receivers_to_plot, aes(x=reorder(player, -total_xfp), y=exp_rec_pts, label=player)) +
+# Plot
+# To order by total season xfp, use reorder(player, -total_xfp)
+ggplot(receivers_to_plot, aes(x=reorder(player, -exp_rec_pts), y=exp_rec_pts, label=player)) +
   geom_boxplot() +
   theme(axis.text.x = element_text(angle = -90)) +
   labs(x = "Player",
@@ -235,7 +237,7 @@ concise_xfp_rushes <- xfp_rushes %>%
   ) %>%
   subset(select = -c(rusher)) # TODO - SHOULDN'T HAVE TO DO THIS
 
-# Get the combined rush/rec xfp for players
+# Get the total (season-long) combined rush/rec xfp for players in case you want to order the graph by that instead
 combined_xfp_aggregate <- dplyr::bind_rows(concise_xfp_rushes, concise_xfp_targets) %>%
   group_by(gsis_id, player) %>%
   summarise(total_xfp = sum(exp_rec_pts, exp_rush_pts, na.rm=TRUE))
@@ -266,7 +268,8 @@ relevant_rbs <- merge(players_meeting_points_threshold, players) %>%
 rb_xfp_by_game <- merge(combined_xfp_by_game, relevant_rbs)
 
 # Plot
-ggplot(rb_xfp_by_game, aes(x=reorder(player, -total_xfp), y=xfp, label=player)) +
+# To order the graph by total season xfp, use reorder(player, -total_xfp)
+ggplot(rb_xfp_by_game, aes(x=reorder(player, -xfp), y=xfp, label=player)) +
   geom_boxplot() +
   theme(axis.text.x = element_text(angle = -90)) +
   labs(x = "Player",
