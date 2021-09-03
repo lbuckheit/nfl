@@ -12,7 +12,7 @@ options(scipen = 9999)
 
 # Define variables
 SEASON_TO_ANALYZE <- 2020
-PTS_PER_RECEPTION <- 0.5
+PTS_PER_RECEPTION <- 1
 
 # Load Historical Data
 seasons <- 2010:2019
@@ -205,16 +205,20 @@ concise_xfp_targets <- xfp_targets %>%
 
 ## Boxplots for receivers
 
+# Grab only the receivers above a certain season points threshold
 relevant_receivers <- concise_xfp_targets %>%
   group_by(gsis_id) %>%
   summarize(total_xfp = sum(exp_rec_pts)) %>%
   filter(total_xfp > 125)
 
+# Create a df of all the games by relevant receivers
 receivers_to_plot = merge(concise_xfp_targets, relevant_receivers)
 
 # Plot
-# To order by total season xfp, use reorder(player, -total_xfp)
-ggplot(receivers_to_plot, aes(x=reorder(player, -exp_rec_pts), y=exp_rec_pts, label=player)) +
+# To order the graph by avg. xfp per game use reorder(player, -exp_rec_pts)
+# To order the graph by total season xfp, use reorder(player, -total_xfp)
+# To order the graph by IQR size use reorder(player, exp_rec_pts, IQR)
+ggplot(receivers_to_plot, aes(x=reorder(player, exp_rec_pts, IQR), y=exp_rec_pts, label=player)) +
   geom_boxplot() +
   theme(axis.text.x = element_text(angle = -90)) +
   labs(x = "Player",
@@ -237,7 +241,7 @@ concise_xfp_rushes <- xfp_rushes %>%
   ) %>%
   subset(select = -c(rusher)) # TODO - SHOULDN'T HAVE TO DO THIS
 
-# Get the total (season-long) combined rush/rec xfp for players in case you want to order the graph by that instead
+# Get the total (season-long) combined rush/rec xfp for players (for use in determining relevant players and graph ordering)
 combined_xfp_aggregate <- dplyr::bind_rows(concise_xfp_rushes, concise_xfp_targets) %>%
   group_by(gsis_id, player) %>%
   summarise(total_xfp = sum(exp_rec_pts, exp_rush_pts, na.rm=TRUE))
@@ -268,8 +272,10 @@ relevant_rbs <- merge(players_meeting_points_threshold, players) %>%
 rb_xfp_by_game <- merge(combined_xfp_by_game, relevant_rbs)
 
 # Plot
+# To order the graph by avg. xfp per game use reorder(player, -xfp)
 # To order the graph by total season xfp, use reorder(player, -total_xfp)
-ggplot(rb_xfp_by_game, aes(x=reorder(player, -xfp), y=xfp, label=player)) +
+# To order the graph by IQR size use reorder(player, xfp, IQR)
+ggplot(rb_xfp_by_game, aes(x=reorder(player, xfp, IQR), y=xfp, label=player)) +
   geom_boxplot() +
   theme(axis.text.x = element_text(angle = -90)) +
   labs(x = "Player",
@@ -277,3 +283,4 @@ ggplot(rb_xfp_by_game, aes(x=reorder(player, -xfp), y=xfp, label=player)) +
        title = str_glue("{SEASON_TO_ANALYZE} Expected {PTS_PER_RECEPTION}PPR Pts. Boxplots"),
        caption = "Via nflFastR"
   )
+
