@@ -24,6 +24,10 @@ historical_pbp <- purrr::map_df(seasons, function(x) {
   )
 })
 
+# Load ADP data
+adp_data <- read.csv(file = "./2021_draft/clean_adp_data.csv") %>%
+  select(gsis_id, adp)
+
 # Calculate the expected points from a carry at a given yardline
 xfp_carry <- historical_pbp %>%
   filter(play_type == "run" & down <= 4 & qb_scramble == 0) %>%
@@ -211,14 +215,18 @@ relevant_receivers <- concise_xfp_targets %>%
   summarize(total_xfp = sum(exp_rec_pts)) %>%
   filter(total_xfp > 125)
 
+# Create list of season-long/other data to merge with the game-by-game data
+relevant_receivers_with_adp <- merge(relevant_receivers, adp_data)
+
 # Create a df of all the games by relevant receivers
-receivers_to_plot = merge(concise_xfp_targets, relevant_receivers)
+receivers_to_plot = merge(concise_xfp_targets, relevant_receivers_with_adp)
 
 # Plot
-# To order the graph by avg. xfp per game use reorder(player, -exp_rec_pts)
-# To order the graph by total season xfp, use reorder(player, -total_xfp)
-# To order the graph by IQR size use reorder(player, exp_rec_pts, IQR)
-ggplot(receivers_to_plot, aes(x=reorder(player, exp_rec_pts, IQR), y=exp_rec_pts, label=player)) +
+# To order by avg. xfp per game use reorder(player, -xfp)
+# To order by total season xfp, use reorder(player, -total_xfp)
+# To order by IQR size use reorder(player, xfp, IQR)
+# To order by ADP use reorder(player, adp)
+ggplot(receivers_to_plot, aes(x=reorder(player, adp), y=exp_rec_pts, label=player)) +
   geom_boxplot() +
   theme(axis.text.x = element_text(angle = -90)) +
   labs(x = "Player",
@@ -251,6 +259,9 @@ players_meeting_points_threshold <- combined_xfp_aggregate %>%
   filter(total_xfp > 125) %>%
   select(player, total_xfp)
 
+# Create list of season-long/other data to merge with the game-by-game data
+rbs_to_merge <- merge(players_meeting_points_threshold, adp_data)
+
 # Build a list of each player's combined rush/rec xfp on a game-by-game basis
 combined_xfp_by_game <- dplyr::bind_rows(concise_xfp_rushes, concise_xfp_targets) %>%
   group_by(gsis_id, player, game_id) %>%
@@ -264,18 +275,19 @@ players <- subset(players, select = c(team, position, first_name, last_name, gsi
 
 # Combine a list of all running back with a list of all players meeting the graphing threshold
 # to produce a list of all running backs that will be graphed
-relevant_rbs <- merge(players_meeting_points_threshold, players) %>%
+relevant_rbs <- merge(rbs_to_merge, players) %>%
   filter(position == "RB") %>%
-  select(gsis_id, player, total_xfp)
+  select(gsis_id, player, total_xfp, adp)
 
 # Then merge the above list with the list of all games to get all games played by relevant RBs
 rb_xfp_by_game <- merge(combined_xfp_by_game, relevant_rbs)
 
 # Plot
-# To order the graph by avg. xfp per game use reorder(player, -xfp)
-# To order the graph by total season xfp, use reorder(player, -total_xfp)
-# To order the graph by IQR size use reorder(player, xfp, IQR)
-ggplot(rb_xfp_by_game, aes(x=reorder(player, xfp, IQR), y=xfp, label=player)) +
+# To order by avg. xfp per game use reorder(player, -xfp)
+# To order by total season xfp, use reorder(player, -total_xfp)
+# To order by IQR size use reorder(player, xfp, IQR)
+# To order by ADP use reorder(player, adp)
+ggplot(rb_xfp_by_game, aes(x=reorder(player, adp), y=xfp, label=player)) +
   geom_boxplot() +
   theme(axis.text.x = element_text(angle = -90)) +
   labs(x = "Player",
