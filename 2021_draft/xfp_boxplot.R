@@ -7,6 +7,7 @@ library(ggplot2)
 library(ggrepel)
 library(stringr)
 options(scipen = 9999)
+source("utils/nfl_utils.R")
 
 ### Background Work ###
 
@@ -14,64 +15,19 @@ options(scipen = 9999)
 SEASON_TO_ANALYZE <- 2020
 PTS_PER_RECEPTION <- 1
 
-# Load Historical Data
-seasons <- 2010:2019
-historical_pbp <- purrr::map_df(seasons, function(x) {
-  readRDS(
-    url(
-      glue::glue("https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_{x}.rds")
-    )
-  )
-})
-
 # Load ADP data
 adp_data <- read.csv(file = "./2021_draft/clean_adp_data.csv") %>%
   select(gsis_id, adp)
 
 # Calculate the expected points from a carry at a given yardline
-xfp_carry <- historical_pbp %>%
-  filter(play_type == "run" & down <= 4 & qb_scramble == 0) %>%
-  group_by(yardline_100) %>%
-  summarize(
-    n(),
-    rush_fp_pp = sum(yards_gained) * 0.1 / n(),
-    td_fp_pp = sum(rush_touchdown) * 6 / n(),
-    xfp_pp = rush_fp_pp + td_fp_pp
-  ) %>%
-  summarize(yardline_100, xfp_pp)
+xfp_carry <- read.csv("helpful_csvs/2000_2020_xfp_by_rush_location.csv")
 
 # Load 2020 PBP Data
 pbp_df <- readRDS(url(str_glue('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_{SEASON_TO_ANALYZE}.rds')))
 
-
 ### Expected points from rushing ###
 
-xfp_rushes <- pbp_df %>%
-  filter(play_type == "run" & !is.na(rusher) & qb_scramble == 0 & season_type == "REG") %>%
-  select(
-    rusher,
-    desc,
-    yardline_100,
-    yards_gained,
-    touchdown,
-    gsis_id = rusher_id,
-    game_id
-  ) %>%
-  # Assign an xfp to each carry based on where the carry took place (using the earlier calculated data)
-  mutate(xfp = xfp_carry[c(yardline_100), 2]) %>%
-  group_by(
-    rusher,
-    gsis_id,
-    game_id
-  ) %>%
-  summarize(
-    carries = n(),
-    exp_rush_pts = sum(xfp),
-    games = length(unique(game_id)),
-    rush_xfp_pp = exp_rush_pts / carries,
-    actual_rush_pts = 0.1 * sum(yards_gained) + 6 * sum(touchdown)
-  )
-
+xfp_rushes <- calculate_rush_xfp_by_game(pbp_df)
 
 ### Expected points from receiving ###
 
@@ -210,10 +166,14 @@ concise_xfp_targets <- xfp_targets %>%
 ## Boxplots for receivers
 
 # Grab only the receivers above a certain season points threshold
-relevant_receivers <- concise_xfp_targets %>%
+relevant_players <- concise_xfp_targets %>%
   group_by(gsis_id) %>%
   summarize(total_xfp = sum(exp_rec_pts)) %>%
   filter(total_xfp > 125)
+
+# Filter by receiver type if you wish
+relevant_receivers <- merge(relevant_players, players) %>%
+  filter(position == "WR" | position == "TE")
 
 # Create list of season-long/other data to merge with the game-by-game data
 relevant_receivers_with_adp <- merge(relevant_receivers, adp_data)
@@ -222,11 +182,11 @@ relevant_receivers_with_adp <- merge(relevant_receivers, adp_data)
 receivers_to_plot = merge(concise_xfp_targets, relevant_receivers_with_adp)
 
 # Plot
-# To order by avg. xfp per game use reorder(player, -xfp)
+# To order by avg. xfp per game use reorder(player, -exP-rec_pts)
 # To order by total season xfp, use reorder(player, -total_xfp)
 # To order by IQR size use reorder(player, xfp, IQR)
 # To order by ADP use reorder(player, adp)
-ggplot(receivers_to_plot, aes(x=reorder(player, adp), y=exp_rec_pts, label=player)) +
+ggplot(receivers_to_plot, aes(x=reorder(player, -exp_rec_pts), y=exp_rec_pts, label=player)) +
   geom_boxplot() +
   theme(axis.text.x = element_text(angle = -90)) +
   labs(x = "Player",
@@ -287,7 +247,7 @@ rb_xfp_by_game <- merge(combined_xfp_by_game, relevant_rbs)
 # To order by total season xfp, use reorder(player, -total_xfp)
 # To order by IQR size use reorder(player, xfp, IQR)
 # To order by ADP use reorder(player, adp)
-ggplot(rb_xfp_by_game, aes(x=reorder(player, adp), y=xfp, label=player)) +
+ggplot(rb_xfp_by_game, aes(x=reorder(player, -xfp), y=xfp, label=player)) +
   geom_boxplot() +
   theme(axis.text.x = element_text(angle = -90)) +
   labs(x = "Player",
