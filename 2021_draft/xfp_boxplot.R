@@ -223,6 +223,7 @@ ggplot(receivers_to_plot, aes(x=reorder(player, -total_xfp), y=exp_rec_pts, labe
 
 ## Boxplots for RBs
 
+# Build an easier to navigate DF
 concise_xfp_rushes <- xfp_rushes %>%
   summarize(
     game_id,
@@ -234,36 +235,42 @@ concise_xfp_rushes <- xfp_rushes %>%
   ) %>%
   subset(select = -c(rusher)) # TODO - SHOULDN'T HAVE TO DO THIS
 
-test <- dplyr::bind_rows(concise_xfp_rushes, concise_xfp_targets) %>%
-  filter(gsis_id == "00-0033699" | gsis_id == "00-0034440")
+# Get the combined rush/rec xfp for players
+combined_xfp_aggregate <- dplyr::bind_rows(concise_xfp_rushes, concise_xfp_targets) %>%
+  group_by(gsis_id, player) %>%
+  summarise(total_xfp = sum(exp_rec_pts, exp_rush_pts, na.rm=TRUE))
 
-test3 <- test %>%
+# Capture only players above a certain threshold for eventual graphing
+players_meeting_points_threshold <- combined_xfp_aggregate %>%
+  filter(total_xfp > 125) %>%
+  select(player, total_xfp)
+
+# Build a list of each player's combined rush/rec xfp on a game-by-game basis
+combined_xfp_by_game <- dplyr::bind_rows(concise_xfp_rushes, concise_xfp_targets) %>%
   group_by(gsis_id, player, game_id) %>%
   summarise(
     xfp = sum(exp_rec_pts, exp_rush_pts, na.rm=TRUE)
   )
 
-test2 <- test %>%
-  group_by(gsis_id, game_id) %>%
-  summarise(
-    game_id = game_id,
-    player = player,
-    xfp = sum(exp_rec_pts, exp_rush_pts, na.rm=TRUE)
+# Grab the rosters for use in filtering by position
+players <- nflfastR::fast_scraper_roster(SEASON_TO_ANALYZE)
+players <- subset(players, select = c(team, position, first_name, last_name, gsis_id))
+
+# Combine a list of all running back with a list of all players meeting the graphing threshold
+# to produce a list of all running backs that will be graphed
+relevant_rbs <- merge(players_meeting_points_threshold, players) %>%
+  filter(position == "RB") %>%
+  select(gsis_id, player, total_xfp)
+
+# Then merge the above list with the list of all games to get all games played by relevant RBs
+rb_xfp_by_game <- merge(combined_xfp_by_game, relevant_rbs)
+
+# Plot
+ggplot(rb_xfp_by_game, aes(x=reorder(player, -total_xfp), y=xfp, label=player)) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = -90)) +
+  labs(x = "Player",
+       y = str_glue("Exp.{PTS_PER_RECEPTION}PPR Pts."),
+       title = str_glue("{SEASON_TO_ANALYZE} Expected {PTS_PER_RECEPTION}PPR Pts. Boxplots"),
+       caption = "Via nflFastR"
   )
-
-# TODO - Malcolm and Marquise Brown are being combined? (can fix by grouping by posteam or ID as well as player)
-xfp_rb <- merge(concise_xfp_rushes, concise_xfp_targets)
-xfp_rb <- mutate(xfp_rb,
-    total_xfp = total_rush_xfp + exp_hPPR_pts,
-    actual_fp = actual_rush_fp + actual_catch_fp
-)
-
-short_xfp_rb <- xfp_rb %>%
-  select(player, gsis_id, games, total_rush_xfp, actual_rush_fp, exp_hPPR_pts, actual_catch_fp, total_xfp, actual_fp, total_xfp_pg)
-  
-ggplot(short_xfp_rb, aes(x=total_xfp, y=actual_fp, label=player)) +
-  geom_point() +
-  geom_text_repel() +
-  geom_smooth(method = "lm", se = FALSE)
-
-write.csv(short_xfp_rb, "./2021_draft/2020_xfp_rb.csv")
