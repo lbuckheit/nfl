@@ -50,21 +50,21 @@ xfp_rushes <- pbp_df %>%
     yardline_100,
     yards_gained,
     touchdown,
-    rusher_id,
+    gsis_id = rusher_id,
     game_id
   ) %>%
   # Assign an xfp to each carry based on where the carry took place (using the earlier calculated data)
   mutate(xfp = xfp_carry[c(yardline_100), 2]) %>%
   group_by(
     rusher,
-    rusher_id,
+    gsis_id,
     game_id
   ) %>%
   summarize(
     carries = n(),
-    total_rush_xfp = sum(xfp),
+    exp_rush_pts = sum(xfp),
     games = length(unique(game_id)),
-    rush_xfp_pp = total_rush_xfp / carries,
+    rush_xfp_pp = exp_rush_pts / carries,
     actual_rush_pts = 0.1 * sum(yards_gained) + 6 * sum(touchdown)
   )
 
@@ -203,7 +203,7 @@ concise_xfp_targets <- xfp_targets %>%
   )
 
 
-## Boxplots for receivers only
+## Boxplots for receivers
 
 relevant_receivers <- concise_xfp_targets %>%
   group_by(gsis_id) %>%
@@ -221,35 +221,38 @@ ggplot(receivers_to_plot, aes(x=reorder(player, -total_xfp), y=exp_rec_pts, labe
        caption = "Via nflFastR"
   )
 
+## Boxplots for RBs
 
-
-
-
-
-
-short_xfp_rushes_2020 <- xfp_rushes_2020 %>%
-  summarize(game_id, player = rusher, rush_games = games, total_rush_xfp, actual_rush_fp, gsis_id = rusher_id) %>%
+concise_xfp_rushes <- xfp_rushes %>%
+  summarize(
+    game_id,
+    player = rusher,
+    rush_games = games,
+    exp_rush_pts,
+    actual_rush_pts,
+    gsis_id
+  ) %>%
   subset(select = -c(rusher)) # TODO - SHOULDN'T HAVE TO DO THIS
 
+test <- dplyr::bind_rows(concise_xfp_rushes, concise_xfp_targets) %>%
+  filter(gsis_id == "00-0033699" | gsis_id == "00-0034440")
 
+test3 <- test %>%
+  group_by(gsis_id, player, game_id) %>%
+  summarise(
+    xfp = sum(exp_rec_pts, exp_rush_pts, na.rm=TRUE)
+  )
 
+test2 <- test %>%
+  group_by(gsis_id, game_id) %>%
+  summarise(
+    game_id = game_id,
+    player = player,
+    xfp = sum(exp_rec_pts, exp_rush_pts, na.rm=TRUE)
+  )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-# TODO - Games column is a little fucked up because it only registers games in which the player had a target
-# TODO - Malcolm and Marquise Brown are being combined (can fix by grouping by posteam or ID as well as player)
-xfp_rb <- merge(short_xfp_rushes_2020, short_xfp_targets_2020, by.x="gsis_id", by.y="game_id")
+# TODO - Malcolm and Marquise Brown are being combined? (can fix by grouping by posteam or ID as well as player)
+xfp_rb <- merge(concise_xfp_rushes, concise_xfp_targets)
 xfp_rb <- mutate(xfp_rb,
     total_xfp = total_rush_xfp + exp_hPPR_pts,
     actual_fp = actual_rush_fp + actual_catch_fp
