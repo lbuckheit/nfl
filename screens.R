@@ -6,17 +6,34 @@ library(dplyr)
 library(ggplot2)
 options(scipen = 9999)
 
-data <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds'))
-screens <- data %>%
+### Analyze which teams utilize the most screens ###
+
+SEASON_TO_ANALYZE <- 2020
+START_WEEK <- 1
+END_WEEK <- 17
+MINIMUM_PLAYS <- 64
+
+pbp_df <- load_pbp(SEASON_TO_ANALYZE)
+
+# FUTURE TODO - Separate out WR/TE vs RB screens?
+screens <- pbp_df %>%
+  # Using WP to control for game script
   filter(down <= 4 & air_yards <= 1 & home_wp <= .75 & away_wp <= .75) %>%
   group_by(posteam) %>%
-  summarize(screens = n(),
-            total_yards_gained = sum(yards_gained),
-            gain_pp = total_yards_gained / screens,
-            total_epa = sum(epa),
-            epa_pp = total_epa / screens)
+  summarize(
+    screens = n(),
+    total_yards_gained = sum(yards_gained),
+    gain_pp = total_yards_gained / screens,
+    total_epa = sum(epa),
+    epa_pp = total_epa / screens
+  )
 
 ggplot(screens, aes(x=screens, y=epa_pp, label=posteam)) +
   geom_point() +
   geom_text_repel() +
-  geom_smooth(method = "lm", se = FALSE)
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "Number of Screens Run",
+       y = "EPA/play on Screens",
+       title = str_glue("{SEASON_TO_ANALYZE} Screen Pass Analysis (Wk. {START_WEEK}-{END_WEEK})"),
+       caption = "Via nflFastR"
+  )

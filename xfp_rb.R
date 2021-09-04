@@ -149,4 +149,4 @@ ggplot(short_xfp_rb, aes(x=total_xfp, y=actual_fp, label=player)) +
   geom_text_repel() +
   geom_smooth(method = "lm", se = FALSE)
 
-write.csv(short_xfp_rb, "./2021_draft/2020_xfp_rb.csv")
+write.csv(short_xfp_rb, "./draft_analysis/2020_xfp_rb.csv")

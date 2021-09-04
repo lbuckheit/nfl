@@ -111,5 +111,5 @@ ggplot(short_xfp_targets, aes(x=exp_hPPR_pts, y=hPPR_pts, label=receiver)) +
   geom_text_repel() +
   geom_smooth(method = "lm", se = FALSE)
 
-write.csv(short_xfp_targets, "./2021_draft/2020_xfp_rec.csv")
+write.csv(short_xfp_targets, "./draft_analysis/2020_xfp_rec.csv")
 

@@ -7,7 +7,7 @@ library(ggplot2)
 options(scipen = 9999)
 
 # Read in the csv
-espn_adp <- read.csv(file = "./2021_draft/2021_espn_adp.csv") %>% 
+espn_adp <- read.csv(file = "./draft_analysis/2021_espn_adp.csv") %>% 
   # Get rid of kickers and defenses
   filter(!grepl('K', position)) %>%
   filter(!grepl('D/ST', last_name))
@@ -40,4 +40,4 @@ players <- subset( players, select = c(team, position, first_name, last_name, gs
 
 merged <- merge(espn_adp, players)
 
-write.csv(merged, "./2021_draft/clean_adp_data.csv")
+write.csv(merged, "./draft_analysis/clean_adp_data.csv")

@@ -6,9 +6,9 @@ library(dplyr)
 library(ggplot2)
 options(scipen = 9999)
 
-xfp_rb_2020 <- read.csv(file = "./2021_draft/2020_xfp_rb.csv")
+xfp_rb_2020 <- read.csv(file = "./draft_analysis/2020_xfp_rb.csv")
 
-adp_data <- read.csv(file = "./2021_draft/clean_adp_data.csv")
+adp_data <- read.csv(file = "./draft_analysis/clean_adp_data.csv")
 
 merge <- merge(xfp_rb_2020, adp_data, by="gsis_id") %>%
   filter(grepl('RB', position))
