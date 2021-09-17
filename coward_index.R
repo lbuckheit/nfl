@@ -26,7 +26,7 @@ critical_downs <- pbp_df %>%
     pct_converted = pass_conversions / plays,
     pct_short = plays_short / plays
   ) %>%
-  filter(MINIMUM_PLAYS)
+  filter(plays >= MINIMUM_PLAYS)
 
 ggplot(critical_downs, aes(x=pct_short, y=pct_converted, label=passer)) +
   geom_point() +

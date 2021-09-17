@@ -25,7 +25,7 @@ xfp_carry <- historical_pbp %>%
   summarize(yardline_100, xfp_pp)
 
 # 2020 pbp data
-pbp_df_2020 <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds'))
+pbp_df_2020 <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2021.rds'))
 
 xfp_rushes_2020 <- pbp_df_2020 %>%
   filter(play_type == "run" & !is.na(rusher) & qb_scramble == 0 & season_type == "REG") %>%

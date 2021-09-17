@@ -9,10 +9,14 @@ library(stringr)
 options(scipen = 9999)
 source("utils/nfl_utils.R")
 
+# TODO - Split this into RB and WR files
+
 ### Background Work ###
 
 # Define variables
 SEASON_TO_ANALYZE <- 2020
+START_WEEK <- 1
+END_WEEK <- 17
 PTS_PER_RECEPTION <- 1
 
 # Load ADP data
@@ -24,7 +28,8 @@ players <- nflfastR::fast_scraper_roster(SEASON_TO_ANALYZE) %>%
   subset(select = c(team, position, first_name, last_name, gsis_id))
 
 # Load annual PBP Data
-pbp_df <- readRDS(url(str_glue('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_{SEASON_TO_ANALYZE}.rds')))
+pbp_df <- load_pbp(SEASON_TO_ANALYZE) %>%
+  filter(season_type == "REG", week >= START_WEEK, week <= END_WEEK)
 
 ### Expected points from rushing, grouped by game ###
 
@@ -56,11 +61,11 @@ concise_xfp_targets <- xfp_targets %>%
 relevant_players <- concise_xfp_targets %>%
   group_by(gsis_id) %>%
   summarize(total_xfp = sum(exp_rec_pts)) %>%
-  filter(total_xfp > 125)
+  filter(total_xfp > 50)
 
 # Filter by receiver type if you wish
 relevant_receivers <- merge(relevant_players, players) %>%
-  filter(position == "WR" | position == "TE")
+  filter(position == "TE")
 
 # Create list of season-long/other data to merge with the game-by-game data
 relevant_receivers_with_adp <- merge(relevant_receivers, adp_data)
@@ -73,7 +78,7 @@ receivers_to_plot = merge(concise_xfp_targets, relevant_receivers_with_adp)
 # To order by total season xfp, use reorder(player, -total_xfp)
 # To order by IQR size use reorder(player, exp_rec_pts, IQR)
 # To order by ADP use reorder(player, adp)
-ggplot(receivers_to_plot, aes(x=reorder(player, exp_rec_pts, IQR), y=exp_rec_pts, label=player)) +
+ggplot(receivers_to_plot, aes(x=reorder(player, adp), y=exp_rec_pts, label=player)) +
   geom_boxplot() +
   theme(axis.text.x = element_text(angle = -90)) +
   labs(x = "Player",
