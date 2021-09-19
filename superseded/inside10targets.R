@@ -6,6 +6,8 @@ library(dplyr)
 library(ggplot2)
 options(scipen = 9999)
 
+### This has been superseded by the more thorough XFP calculations ###
+
 data <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds'))
 data %>%
   filter(!is.na(receiver) & posteam == "DAL" & play_type == "pass" & down <= 4 & yardline_100 <= 15) %>%
@@ -19,8 +21,3 @@ data %>%
        title = "High Value Targets (2020 Wk 1-3)",
        caption = "Data from nflfastR"
   )
-
-# q <- pl %>%
-#   select(desc, yardline_100)
-# 
-# View(q)

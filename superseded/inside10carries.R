@@ -6,6 +6,8 @@ library(dplyr)
 library(ggplot2)
 options(scipen = 9999)
 
+### This has been superseded by the more thorough XFP calculations ###
+
 data <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds'))
 data %>%
   filter(!is.na(rusher) & play_type == "run" & down <= 4 & qb_scramble == 0 & yardline_100 <= 10) %>%

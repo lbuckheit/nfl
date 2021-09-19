@@ -7,7 +7,7 @@ library(ggplot2)
 options(scipen = 9999)
 
 # Read in the csv
-espn_adp <- read.csv(file = "./draft_analysis/2021_espn_adp.csv") %>% 
+espn_adp <- read.csv(file = "./adp_analysis/helpful_csvs/2021_espn_adp.csv") %>% 
   # Get rid of kickers and defenses
   filter(!grepl('K', position)) %>%
   filter(!grepl('D/ST', last_name))
@@ -17,7 +17,7 @@ espn_adp$team <- toupper(espn_adp$team)
 espn_adp$team <- recode(espn_adp$team, LAR = "LA")
 espn_adp$team <- recode(espn_adp$team, WSH = "WAS")
 
-# Note: Players who changed teams:
+# Note: Notable players who changed teams (I just manually set these back to last year's team):
 # Sony Michel
 # Kenyan Drake
 # Corey Davis
@@ -40,4 +40,4 @@ players <- subset( players, select = c(team, position, first_name, last_name, gs
 
 merged <- merge(espn_adp, players)
 
-write.csv(merged, "./draft_analysis/clean_adp_data.csv")
+write.csv(merged, "./adp_analysis/clean_adp_data.csv")

@@ -12,13 +12,14 @@ SEASON_TO_ANALYZE <- 2020
 START_WEEK <- 1
 END_WEEK <- 17
 MINIMUM_PLAYS <- 64
+WP_THRESHOLD <- .75
 
 pbp_df <- load_pbp(SEASON_TO_ANALYZE)
 
 # FUTURE TODO - Separate out WR/TE vs RB screens?
 screens <- pbp_df %>%
   # Using WP to control for game script
-  filter(down <= 4 & air_yards <= 1 & home_wp <= .75 & away_wp <= .75) %>%
+  filter(down <= 4 & air_yards <= 1 & home_wp <= WP_THRESHOLD & away_wp <= WP_THRESHOLD) %>%
   group_by(posteam) %>%
   summarize(
     screens = n(),

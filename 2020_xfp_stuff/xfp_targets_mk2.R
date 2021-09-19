@@ -6,39 +6,12 @@ library(dplyr)
 library(ggplot2)
 library(ggrepel)
 options(scipen = 9999)
-# TODO - per game rather than total, now that the bye weeks have started
+# TODO - Per game rather than total XFP now that its bye week season
+# TODO - Backtest this for year-over-year stability a la WOPR (https://gist.github.com/friscojosh/f59e3c5b71da541a9a34ea27a53bafef)
 
-# define which seasons shall be loaded
-seasons <- 2010:2019
-historical_pbp <- purrr::map_df(seasons, function(x) {
-  readRDS(
-    url(
-      glue::glue("https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_{x}.rds")
-    )
-  )
-})
-
-xfp_carry <- historical_pbp %>%
-  filter(play_type == "run" & down <= 4 & qb_scramble == 0) %>%
-  group_by(yardline_100) %>%
-  summarize(n(), rush_fp_pp = sum(yards_gained) * 0.1 / n(), td_fp_pp = sum(rush_touchdown) * 6 / n(), xfp_pp = rush_fp_pp + td_fp_pp) %>%
-  summarize(yardline_100, xfp_pp)
-
-# 2020 pbp data
-pbp_df_2020 <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2021.rds'))
-
-xfp_rushes_2020 <- pbp_df_2020 %>%
-  filter(play_type == "run" & !is.na(rusher) & qb_scramble == 0 & season_type == "REG") %>%
-  select(rusher, desc, yardline_100, yards_gained, touchdown, rusher_id, game_id) %>%
-  # Assign an xfp to each carry based on where the carry took place (using the earlier calculated data)
-  mutate(xfp = xfp_carry[c(yardline_100), 2]) %>%
-  group_by(rusher, rusher_id) %>%
-  summarize(carries = n(), total_rush_xfp = sum(xfp), games = length(unique(game_id)), rush_xfp_pp = total_rush_xfp / carries, actual_rush_fp = 0.1 * sum(yards_gained) + 6 * sum(touchdown)) %>%
-  filter(carries >= 20)
-
-# -------------
+# --------------------------
 # Sourced almost entirely from: https://www.opensourcefootball.com/posts/2020-08-30-calculating-expected-fantasy-points-for-receivers/
-# -------------
+# --------------------------
 
 source('https://raw.githubusercontent.com/mrcaseb/nflfastR/a26830822df59b6f8d82e65c9723a141957d1da3/R/helper_add_xyac.R')
 source('https://github.com/mrcaseb/nflfastR/raw/master/R/helper_add_nflscrapr_mutations.R')
@@ -58,6 +31,11 @@ add_xyac_blocks[[5]] <- add_xyac_blocks[[5]] %>%
 
 # replace the body of add_xyac_dist() with our new edited function
 body(add_xyac_dist) <- add_xyac_blocks %>% as.call
+
+# 2020 pbp data
+pbp_df <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds')) %>%
+  # Grab smaller chunks of the season if you want
+  filter(week >= 3 & week <= 17)
 
 avg_exp_fp_df <- pbp_df_2020 %>%
   # Get passing plays
@@ -115,38 +93,23 @@ avg_exp_fp_df <- pbp_df_2020 %>%
     exp_yards = sum(exp_yards, na.rm = T),
     # Expected touchdowns for a receiver
     exp_td = sum(ifelse(gain==yardline_100, catch_run_prob, 0), na.rm = T),
-    # Expected 0.t PPR points for a receiver
+    # Expected 0.5 PPR points for a receiver
     exp_hPPR_pts = sum(exp_hPPR_points, na.rm = T),
+    # Expected 0.5 PPR points per game
+    exp_hPPR_pts_pg = exp_hPPR_pts / games,
     # Difference between actual and expected 0.5 PPR points
     hPPR_over_exp = hPPR_pts - exp_hPPR_pts
   ) %>%
   ungroup
 
-short_xfp_targets_2020 <- avg_exp_fp_df %>%
-  select(receiver, receiver_id, games, exp_hPPR_pts, hPPR_pts) %>%
-  summarize(player = receiver, gsis_id = receiver_id, rec_games = games, exp_hPPR_pts, actual_catch_fp = hPPR_pts)
+short_xfp_targets <- avg_exp_fp_df %>%
+  select(receiver, gsis_id = receiver_id, games, hPPR_pts, exp_hPPR_pts, exp_hPPR_pts_pg, hPPR_over_exp) %>%
+  filter(hPPR_pts >= 10)
 
-short_xfp_rushes_2020 <- xfp_rushes_2020 %>%
-  summarize(player = rusher, rush_games = games, total_rush_xfp, actual_rush_fp, gsis_id = rusher_id) %>%
-  subset(select = -c(rusher)) # TODO - SHOULDN'T HAVE TO DO THIS
-
-# TODO - Games column is a little fucked up because it only registers games in which the player had a target
-# TODO - Malcolm and Marquise Brown are being combined (can fix by grouping by posteam or ID as well as player)
-xfp_rb <- merge(short_xfp_rushes_2020, short_xfp_targets_2020)
-xfp_rb$games <- pmax(xfp_rb$rush_games, xfp_rb$rec_games)
-xfp_rb <- mutate(xfp_rb,
-    total_xfp = total_rush_xfp + exp_hPPR_pts,
-    actual_fp = actual_rush_fp + actual_catch_fp,
-    total_xfp_pg = total_xfp / games
-    ) %>%
-  filter(games >= 3) # TODO - TEMP FIX FOR THE GAMES PLAYED ISSUES
-
-short_xfp_rb <- xfp_rb %>%
-  select(player, gsis_id, games, total_rush_xfp, actual_rush_fp, exp_hPPR_pts, actual_catch_fp, total_xfp, actual_fp, total_xfp_pg)
-  
-ggplot(short_xfp_rb, aes(x=total_xfp, y=actual_fp, label=player)) +
+ggplot(short_xfp_targets, aes(x=exp_hPPR_pts, y=hPPR_pts, label=receiver)) +
   geom_point() +
   geom_text_repel() +
   geom_smooth(method = "lm", se = FALSE)
 
-write.csv(short_xfp_rb, "./draft_analysis/2020_xfp_rb.csv")
+write.csv(short_xfp_targets, "./adp_analysis/2020_xfp_rec.csv")
+
