@@ -1,3 +1,7 @@
+# Adjusted WOPR (AWOPR) is my attempt at taking the WOPR calculation from Airyards and then scaling it by a team's passing tendencies/abilities.
+# In theory, a guy with a really high WOPR on the run-heaviest team in the league might be less valuable than a guy with middling WOPR on a team that throws it all day
+# Similarly, a team that's very *good* at throwing the ball should have their WOPR values scaled to indicate their value, since WOPR is just a measure of opportunity, rather than opportunity + quality of opportunity
+
 library(tidyverse)
 library(ggrepel)
 library(ggimage)
@@ -5,8 +9,9 @@ library(nflfastR)
 library(dplyr)
 library(ggplot2)
 options(scipen = 9999)
+# TODO - Need to figure out how to do the WOPR calculation myself
 # TODO - My ANY/A calculation is a little off of PFR, probably because my knowledge of the nflfastR fields isn't complete'
-# TODO - Be able to break down by week chunks (this probably involves just downloading a specific csv, since season-long anya and dbpg is likely better to use for the scaling)
+# TODO - Be able to break down by week chunks (this probably involves just downloading a specific csv, since season-long anya and dropbacks/game is likely better to use for the scaling)
 # TODO - Is this scaling against average the best way to do it?
 
 data <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds'))
