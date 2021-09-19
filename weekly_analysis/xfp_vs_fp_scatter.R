@@ -9,9 +9,12 @@ library(stringr)
 options(scipen = 9999)
 source("utils/nfl_utils.R")
 
+#### Plotting expected FP vs actual FP ####
+
 ### Background Work ###
 
 # Define variables
+SELECTED_POSITION <- "TE"
 SEASON_TO_ANALYZE <- 2021
 START_WEEK <- 1
 END_WEEK <- 1
@@ -36,20 +39,7 @@ xfp_rushes <- calculate_rush_xfp_by_game(pbp_df)
 pbp_with_xyac <- add_xyac_to_pbp(pbp_df)
 
 # Calculate xfp using xyac data
-xfp_targets <- calculate_rec_xfp_by_game(pbp_with_xyac)
-
-# Prune the dataframe only to what's necessary
-concise_xfp_targets <- xfp_targets %>%
-  select(
-    game_id,
-    player = receiver,
-    gsis_id = receiver_id,
-    rec_games = games,
-    exp_rec_pts = exp_pts,
-    actual_rec_pts = pts
-  )
-
-## Boxplots for RBs
+xfp_targets <- calculate_rec_xfp_by_game(pbp_with_xyac, PTS_PER_RECEPTION)
 
 # Prune the dataframe only to what's necessary
 concise_xfp_rushes <- xfp_rushes %>%
@@ -60,6 +50,16 @@ concise_xfp_rushes <- xfp_rushes %>%
     rush_games = games,
     exp_rush_pts,
     actual_rush_pts
+  )
+
+concise_xfp_targets <- xfp_targets %>%
+  select(
+    game_id,
+    player = receiver,
+    gsis_id = receiver_id,
+    rec_games = games,
+    exp_rec_pts = exp_pts,
+    actual_rec_pts = pts
   )
 
 # Get the total (season-long) combined rush/rec xfp for players (for use in determining relevant players and graph ordering)
@@ -75,23 +75,24 @@ players_meeting_points_threshold <- combined_xfp_aggregate %>%
   filter(total_xfp > TOTAL_XFP_THRESHOLD) %>%
   select(player, total_xfp, total_fp)
 
-# Kind of a pointless line but I pulled this code from a file where there was an actual merge happening here and this was easier than renaming stuff
-rbs_to_merge <- players_meeting_points_threshold
-
 # Combine a list of all running back with a list of all players meeting the graphing threshold
-# to produce a list of all running backs that will be graphed
-relevant_rbs <- merge(rbs_to_merge, players) %>%
-  filter(position == "WR") %>%
+# to produce a list of all players that will be graphed
+relevant_players <- merge(players_meeting_points_threshold, players) %>%
+  filter(position == SELECTED_POSITION) %>%
   select(gsis_id, player, total_xfp)
 
-# Then merge the above list with the list of all games to get all games played by relevant RBs
-rb_xfp_vs_fp <- merge(players_meeting_points_threshold, relevant_rbs)
+# Then merge the above list with the list of all games to get all games played by relevant players
+player_xfp_vs_fp <- merge(players_meeting_points_threshold, relevant_players)
 
 # Plot
-# To order by avg. xfp per game use reorder(player, -xfp)
-# To order by total season xfp, use reorder(player, -total_xfp)
-ggplot(rb_xfp_vs_fp, aes(x=total_fp, y=total_xfp, label=player)) +
+ggplot(player_xfp_vs_fp, aes(x=total_xfp, y=total_fp, label=player)) +
   geom_point() +
   geom_text_repel() +
-  geom_smooth(method = "lm", se = FALSE)  
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    x = str_glue("Expected {PTS_PER_RECEPTION}PPR Pts."),
+    y = str_glue("Actual {PTS_PER_RECEPTION}PPR Pts."),
+    title = str_glue("{SEASON_TO_ANALYZE} {PTS_PER_RECEPTION}PPR {SELECTED_POSITION} XFP vs. FP (Weeks {START_WEEK}-{END_WEEK})"),
+    caption = "Via nflFastR"
+  )
 

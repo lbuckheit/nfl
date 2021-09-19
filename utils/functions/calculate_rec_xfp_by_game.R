@@ -8,7 +8,7 @@ library(ggrepel)
 library(stringr)
 options(scipen = 9999)
 
-calculate_rec_xfp_by_game <- function(pbp_data_with_xyac) {
+calculate_rec_xfp_by_game <- function(pbp_data_with_xyac, PTS_PER_RECEPTION) {
   xfp_targets <- pbp_data_with_xyac %>%
     select(
       season = season.x,

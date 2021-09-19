@@ -10,6 +10,7 @@ options(scipen = 9999)
 
 SEASON_TO_ANALYZE <- 2020
 START_WEEK <- 1
+# TODO - Remember that now seasons have 18 weeks
 END_WEEK <- 17
 MINIMUM_PLAYS <- 64
 WP_THRESHOLD <- .75

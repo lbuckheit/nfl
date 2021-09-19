@@ -10,6 +10,7 @@ options(scipen = 9999)
 
 SEASON_TO_ANALYZE <- 2020
 START_WEEK <- 1
+# TODO - Remember that now seasons have 18 weeks
 END_WEEK <- 17
 
 pbp_df <- load_pbp(SEASON_TO_ANALYZE)

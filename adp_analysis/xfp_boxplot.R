@@ -9,6 +9,8 @@ library(stringr)
 options(scipen = 9999)
 source("utils/nfl_utils.R")
 
+### Generate boxplots of expected FP ###
+
 # TODO - Split this into RB and WR files
 
 ### Background Work ###
@@ -16,6 +18,7 @@ source("utils/nfl_utils.R")
 # Define variables
 SEASON_TO_ANALYZE <- 2020
 START_WEEK <- 1
+# TODO - Remember that now seasons have 18 weeks
 END_WEEK <- 17
 PTS_PER_RECEPTION <- 1
 
@@ -41,7 +44,7 @@ xfp_rushes <- calculate_rush_xfp_by_game(pbp_df)
 pbp_with_xyac <- add_xyac_to_pbp(pbp_df)
 
 # Calculate xfp using xyac data
-xfp_targets <- calculate_rec_xfp_by_game(pbp_with_xyac)
+xfp_targets <- calculate_rec_xfp_by_game(pbp_with_xyac, PTS_PER_RECEPTION)
 
 # Prune the dataframe only to what's necessary
 concise_xfp_targets <- xfp_targets %>%
