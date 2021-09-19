@@ -18,7 +18,6 @@ pbp_df <- load_pbp(SEASON_TO_ANALYZE)
 
 # FUTURE TODO - Separate out WR/TE vs RB screens?
 screens <- pbp_df %>%
-  # Using WP to control for game script
   filter(down <= 4 & air_yards <= 1 & home_wp <= WP_THRESHOLD & away_wp <= WP_THRESHOLD) %>%
   group_by(posteam) %>%
   summarize(
